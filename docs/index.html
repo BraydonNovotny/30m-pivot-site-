@@ -166,17 +166,32 @@ function runManual(){
 }
 
 // ---- Quick ticker check: fetch live Yahoo Finance data client-side and score it ----
+// Public CORS proxies are flaky (go down / add auth / rate-limit without warning), so this tries
+// several in sequence -- direct first, then a chain of proxies -- and only fails if ALL of them do.
+async function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(function(){ ctrl.abort(); }, ms || 8000);
+  try{ return await fetch(url, { signal: ctrl.signal }); }
+  finally{ clearTimeout(t); }
+}
 async function yfetch(url){
-  // try direct first (Yahoo sometimes allows cross-origin for the chart endpoint); fall back to a
-  // public CORS proxy if the browser blocks it. Either path returns the same JSON shape.
-  try{
-    const r = await fetch(url);
-    if(r.ok) return await r.json();
-  }catch(e){}
-  const proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
-  const r2 = await fetch(proxied);
-  if(!r2.ok) throw new Error('fetch failed (direct and proxy)');
-  return await r2.json();
+  const attempts = [
+    { name:'direct', url: url },
+    { name:'allorigins', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url) },
+    { name:'codetabs', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url) },
+    { name:'corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(url) },
+  ];
+  const errs = [];
+  for(const a of attempts){
+    try{
+      const r = await fetchWithTimeout(a.url, 8000);
+      if(!r.ok){ errs.push(a.name+': HTTP '+r.status); continue; }
+      const j = await r.json();
+      if(j && j.chart) return j; // sanity check it's actually Yahoo's shape, not a proxy error page
+      errs.push(a.name+': unexpected response shape');
+    }catch(e){ errs.push(a.name+': '+(e.name==='AbortError'?'timeout':e.message)); }
+  }
+  throw new Error('all sources failed -- ' + errs.join(' | '));
 }
 function toBars(chartResult){
   const r = chartResult && chartResult.chart && chartResult.chart.result && chartResult.chart.result[0];
@@ -260,7 +275,7 @@ async function runQuick(){
       '<ul>'+res.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul>'+
       '<div class="sub">Note: sbar (time-of-day-in-session) and dst (days since last tag) use neutral placeholder values live — same limitation as the auto-scanner.</div>';
   }catch(e){
-    out.innerHTML = '<span class="fail">Fetch failed: '+e.message+'. Yahoo may be rate-limiting or blocking cross-origin requests from this browser — try again in a moment.</span>';
+    out.innerHTML = '<span class="fail">Fetch failed: '+e.message+'</span><br><span class="sub">All data sources (direct + 3 proxies) failed — likely temporary rate-limiting. Wait ~30s and retry, or use the Manual bar check below (always works, no network dependency).</span>';
   }
 }
 </script>
