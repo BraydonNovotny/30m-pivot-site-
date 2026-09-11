@@ -107,12 +107,26 @@ async function scanOne(sym) {
       if (!best || res.score > best.res.score) best = { bar: b, lvl: lvl, res: res, cand: cand };
     }
     if (!best) return null;
-    const payUp = slip(best.bar.low);
+    const bestIdx = bars.indexOf(best.bar);
+    // CONFIRM: a pullback bar is only a real signal once a LATER bar actually breaks above the
+    // trigger bar's high (that's the real fill condition in the engine) -- otherwise it's just a
+    // quiet bar sitting near an MA that never got bought, and showing it as "PASS" is misleading.
+    let confirmed = false, fillTime = null, fillPx = null;
+    for (let j = bestIdx + 1; j < bars.length; j++) {
+      if (bars[j].high >= best.bar.high) { confirmed = true; fillTime = bars[j].time; fillPx = Math.max(best.bar.high, bars[j].open); break; }
+    }
+    const today = ptDay(intraday[intraday.length - 1].time);
+    const candIsToday = ptDay(best.bar.time) === today;
+    if (!confirmed && !candIsToday) return null; // dead signal from a prior day that never triggered -- drop it
+    const payUp = slip(best.bar.high);
+    const entryPx = confirmed ? fillPx : best.bar.high; // if waiting, show the level that WOULD trigger it
     return {
       sym: sym, time: best.bar.time, level: best.lvl[0], levelVal: +best.lvl[1].toFixed(2),
-      levelDistATR: +best.lvl[2].toFixed(3), entry: +(best.bar.low + payUp).toFixed(2), rawLow: +best.bar.low.toFixed(2), payUp: payUp,
+      levelDistATR: +best.lvl[2].toFixed(3), entry: +(entryPx + payUp).toFixed(2), rawLow: +entryPx.toFixed(2), payUp: payUp,
       trigLoose: +best.cand.trigLoose.toFixed(3), score: +best.res.score.toFixed(2), nv4: best.res.nv4,
-      pass: best.res.pass, reasons: best.res.reasons,
+      pass: best.res.pass && confirmed, confirmed: confirmed, triggerHigh: +best.bar.high.toFixed(2),
+      reasons: confirmed ? best.res.reasons.concat(['CONFIRMED: broke above trigger high ' + best.bar.high.toFixed(2) + ' at ' + new Date(fillTime * 1000).toISOString()])
+        : best.res.reasons.concat(['WAITING: has not yet broken above trigger high ' + best.bar.high.toFixed(2) + ' -- not a live signal until it does']),
     };
   } catch (e) {
     return null;

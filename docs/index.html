@@ -91,10 +91,12 @@ function renderScan(j){
   j.results.forEach(function(r){
     const tr=document.createElement('tr');
     tr.className = r.pass ? 'pass' : 'fail';
+    const statusLabel = r.pass ? 'CONFIRMED' : (r.confirmed===false ? 'WAITING' : 'no');
+    const statusClass = r.pass ? 'pass' : 'fail';
     tr.innerHTML = '<td>'+r.sym+'</td><td>'+fmtPT(r.time)+'</td>'+
-      '<td>'+r.level+' (d'+r.levelDistATR+')</td><td>'+r.entry+' <span class="sub" style="display:inline">(+'+(r.payUp!=null?r.payUp:0)+' vs '+(r.rawLow!=null?r.rawLow:r.entry)+' low)</span></td><td>'+r.trigLoose+'</td>'+
+      '<td>'+r.level+' (d'+r.levelDistATR+')</td><td>'+r.entry+' <span class="sub" style="display:inline">(+'+(r.payUp!=null?r.payUp:0)+' vs '+(r.rawLow!=null?r.rawLow:r.entry)+(r.confirmed===false?' watch-above':' fill')+')</span></td><td>'+r.trigLoose+'</td>'+
       '<td>'+r.score+'</td><td>'+r.nv4+'</td>'+
-      '<td><span class="badge '+(r.pass?'pass':'fail')+'">'+(r.pass?'PASS':'no')+'</span></td>';
+      '<td><span class="badge '+statusClass+'">'+statusLabel+'</span></td>';
     tb.appendChild(tr);
   });
 }
