@@ -40,7 +40,7 @@
     <span class="sub" style="margin:0;">All times below are Pacific (PT)</span>
   </div>
   <table id="resultsTable">
-    <thead><tr><th>Sym</th><th>Time (PT)</th><th>Level</th><th>Entry (paid up)</th><th>Trig</th><th>Score</th><th>nV4</th><th>Status</th></tr></thead>
+    <thead><tr><th>Sym</th><th>Time (PT)</th><th>Level</th><th>Entry (paid up)</th><th>Trig</th><th>Slope50</th><th>Score</th><th>nV4</th><th>Status</th></tr></thead>
     <tbody></tbody>
   </table>
 </div>
@@ -60,6 +60,7 @@
     <div><label>Days since last tag (dst)</label><input id="m_dst" type="number" step="1" value="10"></div>
     <div><label>2-day RSI</label><input id="m_rsi2" type="number" step="any" value="30"></div>
     <div><label>60d avg $vol (millions)</label><input id="m_dv" type="number" step="any" value="300"></div>
+    <div><label>Daily 50EMA slope (5-bar %)</label><input id="m_slope" type="number" step="any" value="1.5"></div>
   </div>
   <button onclick="runManual()">Score this bar</button>
   <div id="manualResult"></div>
@@ -91,10 +92,12 @@ function renderScan(j){
   j.results.forEach(function(r){
     const tr=document.createElement('tr');
     tr.className = r.pass ? 'pass' : 'fail';
-    const statusLabel = r.pass ? 'CONFIRMED' : (r.confirmed===false ? 'WAITING' : 'no');
-    const statusClass = r.pass ? 'pass' : 'fail';
+    const slopeBad = r.slope50!=null && r.slope50<0;
+    const statusLabel = slopeBad ? 'no (slope<0)' : (r.pass ? 'CONFIRMED' : (r.confirmed===false ? 'WAITING' : 'no'));
+    const statusClass = (r.pass && !slopeBad) ? 'pass' : 'fail';
     tr.innerHTML = '<td>'+r.sym+'</td><td>'+fmtPT(r.time)+'</td>'+
       '<td>'+r.level+' (d'+r.levelDistATR+')</td><td>'+r.entry+' <span class="sub" style="display:inline">(+'+(r.payUp!=null?r.payUp:0)+' vs '+(r.rawLow!=null?r.rawLow:r.entry)+(r.confirmed===false?' watch-above':' fill')+')</span></td><td>'+r.trigLoose+'</td>'+
+      '<td>'+(r.slope50!=null?r.slope50+'%':'-')+'</td>'+
       '<td>'+r.score+'</td><td>'+r.nv4+'</td>'+
       '<td><span class="badge '+statusClass+'">'+statusLabel+'</span></td>';
     tb.appendChild(tr);
@@ -134,7 +137,7 @@ initDates();
 function runManual(){
   const g = id => parseFloat(document.getElementById(id).value);
   const high=g('m_high'), low=g('m_low'), close=g('m_close'), open=g('m_open');
-  const lvl=g('m_lvl'), atr=g('m_atr'), sbar=g('m_sbar'), d3=g('m_d3'), dst=g('m_dst'), rsi2=g('m_rsi2'), dvM=g('m_dv');
+  const lvl=g('m_lvl'), atr=g('m_atr'), sbar=g('m_sbar'), d3=g('m_d3'), dst=g('m_dst'), rsi2=g('m_rsi2'), dvM=g('m_dv'), slope50=g('m_slope');
   if([high,low,close,open,lvl,atr].some(isNaN)){
     document.getElementById('manualResult').innerHTML='<span class="fail">Fill in high/low/close/open/level/ATR first.</span>';
     return;
@@ -143,7 +146,7 @@ function runManual(){
   const trigLoose = rng/atr;
   const closeLoc = rng>0 ? (close-low)/rng : 0.5;
   const pierce = (lvl-low)/atr;
-  const cand = { trigLoose, pierce, sbar, d3, dst, rsi2, dv60: dvM*1e6, _dr:2, _offHi:null, _wLo:closeLoc, _cLoc:closeLoc };
+  const cand = { trigLoose, pierce, sbar, d3, dst, rsi2, dv60: dvM*1e6, _dr:2, _offHi:null, _wLo:closeLoc, _cLoc:closeLoc, slope50: isNaN(slope50)?null:slope50 };
   const res = ScoreLib.admit(cand);
   const html = '<div class="'+(res.pass?'pass':'fail')+'">'+(res.pass?'PASS':'REJECTED')+'</div>'+
     '<ul>'+res.reasons.map(r=>'<li>'+r+'</li>').join('')+'</ul>';

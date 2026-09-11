@@ -101,7 +101,7 @@ async function scanOne(sym) {
       const sbar = k; // rough session-bar-index proxy within the recent window
       const cand = {
         trigLoose: trigLoose, pierce: pierce, sbar: sbar, d3: dctx.d3, dst: 10, // dst unknown live -> neutral default
-        rsi2: dctx.rsi2, dv60: dctx.dv60, _dr: 2, _offHi: null, _wLo: closeLoc, _cLoc: closeLoc,
+        rsi2: dctx.rsi2, dv60: dctx.dv60, _dr: 2, _offHi: null, _wLo: closeLoc, _cLoc: closeLoc, slope50: dctx.slope50,
       };
       const res = S.admit(cand);
       if (!best || res.score > best.res.score) best = { bar: b, lvl: lvl, res: res, cand: cand };
@@ -124,7 +124,7 @@ async function scanOne(sym) {
       sym: sym, time: best.bar.time, level: best.lvl[0], levelVal: +best.lvl[1].toFixed(2),
       levelDistATR: +best.lvl[2].toFixed(3), entry: +(entryPx + payUp).toFixed(2), rawLow: +entryPx.toFixed(2), payUp: payUp,
       trigLoose: +best.cand.trigLoose.toFixed(3), score: +best.res.score.toFixed(2), nv4: best.res.nv4,
-      pass: best.res.pass && confirmed, confirmed: confirmed, triggerHigh: +best.bar.high.toFixed(2),
+      slope50: dctx.slope50, pass: best.res.pass && confirmed, confirmed: confirmed, triggerHigh: +best.bar.high.toFixed(2),
       reasons: confirmed ? best.res.reasons.concat(['CONFIRMED: broke above trigger high ' + best.bar.high.toFixed(2) + ' at ' + new Date(fillTime * 1000).toISOString()])
         : best.res.reasons.concat(['WAITING: has not yet broken above trigger high ' + best.bar.high.toFixed(2) + ' -- not a live signal until it does']),
     };

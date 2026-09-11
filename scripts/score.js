@@ -58,6 +58,11 @@
   function admit(c) {
     const sc = champScore(c);
     const tl = c.trigLoose;
+    // BASELINE (locked): no longs where the daily 50EMA is sloping down. slope50 = 5-bar % slope
+    // of the daily 50EMA; null/unknown treated as pass-through (can't evaluate live without daily history).
+    if (c.slope50 != null && c.slope50 < 0) {
+      return { pass: false, score: sc, nv4: nV4(c), reasons: ['REJECTED: daily 50EMA slope50=' + c.slope50.toFixed(2) + '% < 0 (baseline requires slope>=0 for longs)'] };
+    }
     const pathA = tl <= GATE.Ta && sc >= GATE.A;
     const pathAloose = tl > GATE.Ta && tl <= GATE.Tb && sc >= GATE.B;
     const pathB = sc >= GATE.Bs && tl <= GATE.Bcap;
@@ -119,9 +124,13 @@
     Object.keys(LVLS_DAILY).forEach(function (k) { const vals = EMA(c.slice(0, i + 1), LVLS_DAILY[k]); levels[k] = vals[vals.length - 1]; });
     Object.keys(LVLS_DAILY_S).forEach(function (k) { levels[k] = SMA(c, LVLS_DAILY_S[k], i); });
     const e50v = EMA(c.slice(0, i + 1), 50); const e200v = EMA(c.slice(0, i + 1), 200);
+    const e50now = e50v[e50v.length - 1];
+    const e50v5 = EMA(c.slice(0, i - 4), 50); // EMA as of 5 bars ago
+    const e50ago = e50v5.length ? e50v5[e50v5.length - 1] : null;
+    const slope50 = (e50ago != null && e50now != null) ? +(((e50now - e50ago) / e50now) * 100).toFixed(2) : null;
     return {
       levels: levels, atr: atr, rsi2: RSI(c, i, 2), d3: (c[i] - c[i - 3]) / atr,
-      dv60: m ? dvs / m : 0, a50: e50v[e50v.length - 1] > e200v[e200v.length - 1],
+      dv60: m ? dvs / m : 0, a50: e50v[e50v.length - 1] > e200v[e200v.length - 1], slope50: slope50,
     };
   }
   function weeklyContext(weekly) {
