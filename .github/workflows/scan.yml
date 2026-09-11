@@ -24,6 +24,6 @@ jobs:
         run: |
           git config user.name "scan-bot"
           git config user.email "scan-bot@users.noreply.github.com"
-          git add docs/data.json docs/score.js
+          git add docs/data.json docs/score.js docs/history
           git diff --quiet --cached || git commit -m "auto: scan update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push

@@ -125,8 +125,23 @@ async function main() {
   await Promise.all(Array.from({ length: CONC }, worker));
   results.sort(function (a, b) { return b.score - a.score; });
   const out = { generatedAt: new Date().toISOString(), universe: UNIVERSE.length, scanned: results.length, results: results };
-  fs.writeFileSync(path.join(__dirname, '..', 'docs', 'data.json'), JSON.stringify(out, null, 1));
-  console.log('wrote data.json:', results.length, 'candidates,', results.filter(function (r) { return r.pass; }).length, 'passing');
+  const docsDir = path.join(__dirname, '..', 'docs');
+  fs.writeFileSync(path.join(docsDir, 'data.json'), JSON.stringify(out, null, 1));
+
+  // --- history: snapshot today's (Pacific calendar day) scan, overwritten on each intraday run ---
+  const ptDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const histDir = path.join(docsDir, 'history');
+  if (!fs.existsSync(histDir)) fs.mkdirSync(histDir, { recursive: true });
+  fs.writeFileSync(path.join(histDir, ptDate + '.json'), JSON.stringify(out, null, 1));
+
+  const idxPath = path.join(histDir, 'index.json');
+  let dates = [];
+  try { dates = JSON.parse(fs.readFileSync(idxPath, 'utf8')); } catch (e) {}
+  if (!dates.includes(ptDate)) dates.push(ptDate);
+  dates.sort();
+  fs.writeFileSync(idxPath, JSON.stringify(dates, null, 1));
+
+  console.log('wrote data.json + history/' + ptDate + '.json:', results.length, 'candidates,', results.filter(function (r) { return r.pass; }).length, 'passing');
 }
 
 main();
