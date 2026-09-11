@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-11T03:39:55.953Z",
- "universe": 14,
- "scanned": 3,
+ "generatedAt": "2026-09-11T04:59:56.834Z",
+ "universe": 5,
+ "scanned": 2,
  "results": [
   {
    "sym": "NVDA",
@@ -27,32 +27,6 @@
     "Path B failed: score 4.00 < 10",
     "PASS via Path C (shakeout): wick>=0.5, closeLoc>=0.5, score>=4, trig<=0.25",
     "CONFIRMED: broke above trigger high 218.38 at 2026-09-10T19:30:00.000Z"
-   ]
-  },
-  {
-   "sym": "CRM",
-   "time": 1789065000,
-   "level": "we200",
-   "levelVal": 242.59,
-   "levelDistATR": 0.009,
-   "entry": 243.83,
-   "rawLow": 243.73,
-   "payUp": 0.1,
-   "trigLoose": 0.088,
-   "score": 4,
-   "nv4": 3,
-   "slope50": 4.59,
-   "pass": true,
-   "confirmed": true,
-   "triggerHigh": 243.73,
-   "reasons": [
-    "champion weighted score = 4.00 (raw signal sum, not nV4)",
-    "nV4 (0-9 grading scale) = 3",
-    "trigLoose (bar range / daily ATR) = 0.088",
-    "PASS via base path: trig<=0.15 & score>=1",
-    "Path B failed: score 4.00 < 10",
-    "PASS via Path C (shakeout): wick>=0.5, closeLoc>=0.5, score>=4, trig<=0.25",
-    "CONFIRMED: broke above trigger high 243.73 at 2026-09-10T19:00:00.000Z"
    ]
   },
   {

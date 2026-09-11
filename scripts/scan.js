@@ -64,17 +64,29 @@ function toWeekly(daily) {
   });
 }
 
+// per-symbol cache written for EVERY scanned ticker (regardless of admit/regime), so the site's
+// Quick Ticker Check can score ANY universe ticker same-origin -- no external fetch, no CORS,
+// no ad-blocker collision, no trip to GitHub Actions. Populated by scanOne() as a side effect.
+const CONTEXT_CACHE = {};
+
 async function scanOne(sym) {
   try {
     const daily = await chart(sym, '2y', '1d');
     if (!daily || daily.length < 210) return null;
-    const intraday = await chart(sym, '5d', '30m');
+    const intraday = await chart(sym, '60d', '30m'); // wider window so the cache covers older bars too
     if (!intraday || intraday.length < 5) return null;
     const weekly = toWeekly(daily);
     const i = daily.length - 1;
     const dctx = S.dailyContext(daily, i);
-    if (!dctx.a50) return null; // regime filter: daily 50>200
     const wctx = S.weeklyContext(weekly);
+    // stash the compact context + recent bars for the same-origin quick-check cache, BEFORE the
+    // regime filter below -- a ticker outside the 50>200 uptrend should still be checkable, it'll
+    // just correctly show REJECTED (regime fail) instead of having no data at all.
+    CONTEXT_CACHE[sym] = {
+      dctx: dctx, wctx: wctx,
+      bars: intraday.map(function (b) { return [b.time, +b.open.toFixed(4), +b.high.toFixed(4), +b.low.toFixed(4), +b.close.toFixed(4)]; }),
+    };
+    if (!dctx.a50) return null; // regime filter: daily 50>200 (admission only, cache above is unaffected)
 
     // last completed 30m bar (skip the still-forming one if market is open — use second-to-last as "last closed")
     const bars = intraday.slice(-8); // recent bars to scan for a candidate trigger
@@ -161,6 +173,7 @@ async function main() {
   const out = { generatedAt: new Date().toISOString(), universe: UNIVERSE.length, scanned: results.length, results: results };
   const docsDir = path.join(__dirname, '..', 'docs');
   fs.writeFileSync(path.join(docsDir, 'data.json'), JSON.stringify(out, null, 1));
+  fs.writeFileSync(path.join(docsDir, 'context.json'), JSON.stringify({ generatedAt: out.generatedAt, symbols: CONTEXT_CACHE }));
 
   // --- history: snapshot today's (Pacific calendar day) scan, overwritten on each intraday run ---
   const ptDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());

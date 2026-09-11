@@ -47,18 +47,21 @@
 
 <div class="card">
   <h2 style="font-size:16px;margin:0 0 4px;">Quick ticker check</h2>
-  <div class="sub" style="margin-bottom:6px;">Same architecture as your RS screener: 100% server-side (a GitHub Action fetches Yahoo Finance and writes the result), no browser-side fetch at all — so no CORS/ad-blocker issues, ever.</div>
-  <div id="quickFallback" style="margin-top:8px;padding:14px;background:#0b0d11;border:1px solid #2a2f38;border-radius:8px;">
-    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;">
-      <div><label>Ticker (for matching the result below)</label><input id="q_sym" type="text" placeholder="AAPL" style="text-transform:uppercase;"></div>
-    </div>
+  <div class="sub" style="margin-bottom:6px;">Same-origin cached data (refreshed every 15 min by the scan job) — no external fetch, no CORS, no ad-blocker issues, instant.</div>
+  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;">
+    <div><label>Ticker</label><input id="q_sym" type="text" placeholder="AAPL" style="text-transform:uppercase;"></div>
+    <div><label>Date (blank = latest cached bar)</label><input id="q_date" type="text" placeholder="2026-09-10"></div>
+    <div><label>Time PT (e.g. 10:30)</label><input id="q_time" type="text" placeholder="10:30"></div>
+    <button onclick="checkQuickResult()">Get score</button>
+  </div>
+  <div id="quickFallbackResult" style="margin-top:10px;font-size:13px;line-height:1.6;"></div>
+  <div id="quickFallback" hidden style="margin-top:14px;padding:14px;background:#0b0d11;border:1px solid #2a2f38;border-radius:8px;">
+    <div class="sub" style="margin-bottom:6px;">Ticker not in the cached universe (232 names) — use the server-side lookup instead:</div>
     <ol style="margin:8px 0;padding-left:20px;color:#c3c8d1;">
       <li>Open <a href="https://github.com/BraydonNovotny/30m-pivot-site-/actions/workflows/quicklookup.yml" target="_blank">the quicklookup Action</a></li>
-      <li>Click <b>"Run workflow"</b>, type the ticker (+ date/time if you want a specific bar), click the green Run button</li>
-      <li>Wait ~30-60s for it to finish, then come back here, type the same ticker above, and click <b>"Check for result"</b></li>
+      <li>Click <b>"Run workflow"</b>, type the ticker (+ date/time), click the green Run button</li>
+      <li>Wait ~30-60s, come back here, type the same ticker above, click <b>"Get score"</b> again</li>
     </ol>
-    <button onclick="checkQuickResult()">Check for result</button>
-    <div id="quickFallbackResult" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -170,31 +173,68 @@ function runManual(){
   document.getElementById('manualResult').innerHTML = html;
 }
 
+let _contextCache = null;
+async function loadContextCache(){
+  if(_contextCache) return _contextCache;
+  const r = await fetch('context.json?_='+Date.now());
+  if(!r.ok) throw new Error('context.json not available');
+  _contextCache = await r.json();
+  return _contextCache;
+}
+function cut20(key){ return !/(^|[^0-9])20$/.test(key||''); }
+function ptKeyLocal(t){ return new Intl.DateTimeFormat('en-CA',{timeZone:PT_TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t*1000)); }
+function ptHMLocal(t){ return new Intl.DateTimeFormat('en-US',{timeZone:PT_TZ,hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(t*1000)); }
+
 async function checkQuickResult(){
   const sym = document.getElementById('q_sym').value.trim().toUpperCase();
+  const dateStr = document.getElementById('q_date').value.trim();
+  const timeStr = document.getElementById('q_time').value.trim();
   const el = document.getElementById('quickFallbackResult');
+  document.getElementById('quickFallback').hidden = true;
+  if(!sym){ el.innerHTML = '<span class="fail">Type a ticker.</span>'; return; }
   el.innerHTML = 'Checking…';
   try{
-    const r = await fetch('quicklookup.json?_='+Date.now());
-    if(!r.ok) throw new Error('no result file yet');
-    const j = await r.json();
-    if(sym && j.sym && j.sym!==sym){
-      el.innerHTML = '<span class="sub">Latest result is for '+j.sym+', not '+sym+' — run the workflow for '+sym+' if you haven\'t yet, or wait for it to finish.</span>';
+    const cache = await loadContextCache();
+    const rec = cache.symbols[sym];
+    if(!rec){ // not in the cached universe -> fall back to the Actions panel
+      document.getElementById('quickFallback').hidden = false;
+      el.innerHTML = '';
       return;
     }
-    if(!j.ok){
-      el.innerHTML = '<span class="fail">Lookup failed: '+j.error+'</span>';
-      return;
+    const bars = rec.bars; // [time,open,high,low,close][]
+    const timeNorm = timeStr.length===4 ? '0'+timeStr : timeStr;
+    let bar = null;
+    if(dateStr || timeStr){
+      bar = bars.find(function(b){
+        const dOk = dateStr ? ptKeyLocal(b[0])===dateStr : true;
+        const tOk = timeStr ? ptHMLocal(b[0])===timeNorm : true;
+        return dOk && tOk;
+      });
+      if(!bar){ el.innerHTML = '<span class="fail">No cached bar for '+sym+' at '+(dateStr||'(any date)')+' '+(timeStr||'(any time)')+' PT (cache covers ~60 trading days).</span>'; return; }
+    } else {
+      bar = bars[bars.length-2] || bars[bars.length-1]; // last CLOSED bar
     }
-    const ambigNote = j.ambiguousWith ? (' <span class="sub" style="display:inline">(also close to '+j.ambiguousWith.key+', d'+j.ambiguousWith.distATR+' ATR — ambiguous)</span>') : '';
+    const [time, open, high, low, close] = bar;
+    const dctx = rec.dctx, wctx = rec.wctx;
+    const rng = high-low;
+    const trigLoose = rng/dctx.atr;
+    const closeLoc = rng>0 ? (close-low)/rng : 0.5;
+    const nearest = ScoreLib.nearestLevel(low, dctx, wctx).filter(function(a){ return cut20(a[0]); });
+    if(!nearest.length){ el.innerHTML = '<span class="fail">Could not compute MA levels for '+sym+'.</span>'; return; }
+    const lvl = nearest[0], second = nearest[1];
+    const pierce = (lvl[1]-low)/dctx.atr;
+    const cand = { trigLoose, pierce, sbar:6, d3:dctx.d3, dst:5, rsi2:dctx.rsi2, dv60:dctx.dv60, _dr:1, _offHi:null, _wLo:closeLoc, _cLoc:closeLoc, slope50:dctx.slope50 };
+    const res = ScoreLib.admit(cand);
+    const ambigNote = (second && second[2]<=0.15) ? (' <span class="sub" style="display:inline">(also close to '+second[0]+', d'+second[2].toFixed(2)+' ATR — ambiguous)</span>') : '';
     el.innerHTML =
-      '<b>'+j.sym+'</b> @ '+j.barDate+' '+j.barTime+' PT — bar O:'+j.open.toFixed(2)+' H:'+j.high.toFixed(2)+' L:'+j.low.toFixed(2)+' C:'+j.close.toFixed(2)+'<br>'+
-      'Nearest level: <b>'+j.level+'</b> = '+j.levelVal+' (d'+j.levelDistATR+' ATR)'+ambigNote+' &nbsp; trigLoose='+j.trigLoose+' &nbsp; slope50='+(j.slope50!=null?j.slope50+'%':'-')+
-      '<div class="'+(j.pass?'pass':'fail')+'" style="margin-top:8px;">'+(j.pass?'PASS':'REJECTED')+'</div>'+
-      '<ul>'+j.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul>'+
-      '<div class="sub">Generated '+new Date(j.generatedAt).toLocaleString()+'</div>';
+      '<b>'+sym+'</b> @ '+ptKeyLocal(time)+' '+ptHMLocal(time)+' PT — bar O:'+open.toFixed(2)+' H:'+high.toFixed(2)+' L:'+low.toFixed(2)+' C:'+close.toFixed(2)+'<br>'+
+      'Nearest level: <b>'+lvl[0]+'</b> = '+lvl[1].toFixed(2)+' (d'+lvl[2].toFixed(3)+' ATR)'+ambigNote+' &nbsp; trigLoose='+trigLoose.toFixed(3)+' &nbsp; slope50='+(dctx.slope50!=null?dctx.slope50+'%':'-')+
+      '<div class="'+(res.pass?'pass':'fail')+'" style="margin-top:8px;">'+(res.pass?'PASS':'REJECTED')+'</div>'+
+      '<ul>'+res.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul>'+
+      '<div class="sub">Cache generated '+new Date(cache.generatedAt).toLocaleString()+'</div>';
   }catch(e){
-    el.innerHTML = '<span class="sub">No result yet — run the workflow first (takes ~30-60s), then check again.</span>';
+    document.getElementById('quickFallback').hidden = false;
+    el.innerHTML = '<span class="sub">Same-origin cache unavailable ('+e.message+') — use the fallback below.</span>';
   }
 }
 </script>
