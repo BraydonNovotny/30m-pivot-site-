@@ -1,1 +1,25 @@
-{"ok":false,"error":"no lookup run yet"}
+{
+ "sym": "VRT",
+ "dateReq": "",
+ "timeReq": "9:30",
+ "generatedAt": "2026-09-11T04:03:16.695Z",
+ "ok": true,
+ "barDate": "2026-06-16",
+ "barTime": "09:30",
+ "open": 308.79998779296875,
+ "high": 308.79998779296875,
+ "low": 306.4200134277344,
+ "close": 308.45001220703125,
+ "level": "s100",
+ "levelVal": 302.36,
+ "levelDistATR": 0.299,
+ "ambiguousWith": null,
+ "trigLoose": 0.175,
+ "slope50": -0.65,
+ "pass": false,
+ "score": 1.75,
+ "nv4": 3,
+ "reasons": [
+  "REJECTED: daily 50EMA slope50=-0.65% < 0 (baseline requires slope>=0 for longs)"
+ ]
+}
