@@ -46,6 +46,18 @@
 </div>
 
 <div class="card">
+  <h2 style="font-size:16px;margin:0 0 4px;">Quick ticker check</h2>
+  <div class="sub" style="margin-bottom:6px;">Type a ticker + the trigger bar's time (Pacific) — pulls live 30m bars from Yahoo Finance and scores it automatically. No need to type OHLC by hand.</div>
+  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+    <div><label>Ticker</label><input id="q_sym" type="text" placeholder="AAPL" style="text-transform:uppercase;"></div>
+    <div><label>Date (blank = most recent day)</label><input id="q_date" type="text" placeholder="2026-09-10"></div>
+    <div><label>Time PT (e.g. 10:30)</label><input id="q_time" type="text" placeholder="10:30"></div>
+    <button onclick="runQuick()">Fetch & score</button>
+  </div>
+  <div id="quickResult" style="margin-top:16px;font-size:13px;line-height:1.6;"></div>
+</div>
+
+<div class="card">
   <h2 style="font-size:16px;margin:0 0 4px;">Manual bar check</h2>
   <div class="sub" style="margin-bottom:6px;">Type in a trigger bar you're eyeballing on a chart — scored with the exact same champion gate as the backtest.</div>
   <div class="grid">
@@ -151,6 +163,105 @@ function runManual(){
   const html = '<div class="'+(res.pass?'pass':'fail')+'">'+(res.pass?'PASS':'REJECTED')+'</div>'+
     '<ul>'+res.reasons.map(r=>'<li>'+r+'</li>').join('')+'</ul>';
   document.getElementById('manualResult').innerHTML = html;
+}
+
+// ---- Quick ticker check: fetch live Yahoo Finance data client-side and score it ----
+async function yfetch(url){
+  // try direct first (Yahoo sometimes allows cross-origin for the chart endpoint); fall back to a
+  // public CORS proxy if the browser blocks it. Either path returns the same JSON shape.
+  try{
+    const r = await fetch(url);
+    if(r.ok) return await r.json();
+  }catch(e){}
+  const proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+  const r2 = await fetch(proxied);
+  if(!r2.ok) throw new Error('fetch failed (direct and proxy)');
+  return await r2.json();
+}
+function toBars(chartResult){
+  const r = chartResult && chartResult.chart && chartResult.chart.result && chartResult.chart.result[0];
+  if(!r) return [];
+  const ts = r.timestamp || [];
+  const q = r.indicators.quote[0];
+  const out = [];
+  for(let i=0;i<ts.length;i++){
+    if(q.close[i]==null) continue;
+    out.push({ time: ts[i], open:q.open[i], high:q.high[i], low:q.low[i], close:q.close[i], volume:q.volume[i]||0 });
+  }
+  return out;
+}
+function toWeeklyClient(daily){
+  const byWeek={};
+  daily.forEach(function(b){
+    const d=new Date(b.time*1000); const day=d.getUTCDay();
+    const monday=new Date(d); monday.setUTCDate(d.getUTCDate()-((day+6)%7));
+    const key=monday.toISOString().slice(0,10);
+    (byWeek[key]=byWeek[key]||[]).push(b);
+  });
+  return Object.keys(byWeek).sort().map(function(k){
+    const bars=byWeek[k];
+    return { time:bars[0].time, open:bars[0].open, high:Math.max.apply(null,bars.map(b=>b.high)),
+      low:Math.min.apply(null,bars.map(b=>b.low)), close:bars[bars.length-1].close,
+      volume:bars.reduce((a,b)=>a+b.volume,0) };
+  });
+}
+async function runQuick(){
+  const out = document.getElementById('quickResult');
+  const sym = document.getElementById('q_sym').value.trim().toUpperCase();
+  const dateStr = document.getElementById('q_date').value.trim();
+  const timeStr = document.getElementById('q_time').value.trim();
+  if(!sym){ out.innerHTML='<span class="fail">Type a ticker.</span>'; return; }
+  out.innerHTML = 'Fetching '+sym+'…';
+  try{
+    const dailyJ = await yfetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=2y&interval=1d');
+    const daily = toBars(dailyJ);
+    if(daily.length<210){ out.innerHTML='<span class="fail">Not enough daily history for '+sym+'.</span>'; return; }
+    const intraJ = await yfetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=60d&interval=30m');
+    const intraday = toBars(intraJ);
+    if(!intraday.length){ out.innerHTML='<span class="fail">No intraday data for '+sym+'.</span>'; return; }
+    const weekly = toWeeklyClient(daily);
+    const i = daily.length-1;
+    const dctx = ScoreLib.dailyContext(daily, i);
+    const wctx = ScoreLib.weeklyContext(weekly);
+
+    // find the bar matching the requested date+time (PT); default to the most recent closed bar
+    const ptKey = function(t){ return new Intl.DateTimeFormat('en-CA',{timeZone:PT_TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t*1000)); };
+    const ptHM = function(t){ const d=new Intl.DateTimeFormat('en-US',{timeZone:PT_TZ,hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(t*1000)); return d; };
+    let bar = null;
+    if(dateStr || timeStr){
+      bar = intraday.find(function(b){
+        const dOk = dateStr ? ptKey(b.time)===dateStr : true;
+        const tOk = timeStr ? ptHM(b.time)===(timeStr.length===4?'0'+timeStr:timeStr) : true;
+        return dOk && tOk;
+      });
+      if(!bar){ out.innerHTML='<span class="fail">No bar found for '+sym+' at '+(dateStr||'(any date)')+' '+(timeStr||'(any time)')+' PT. Yahoo 30m history is limited to ~60 days back.</span>'; return; }
+    } else {
+      bar = intraday[intraday.length-2] || intraday[intraday.length-1]; // last CLOSED bar
+    }
+
+    const rng = bar.high-bar.low;
+    const trigLoose = rng/dctx.atr;
+    const closeLoc = rng>0 ? (bar.close-bar.low)/rng : 0.5;
+    const cut20 = function(key){ return !/(^|[^0-9])20$/.test(key||''); };
+    const nearest = ScoreLib.nearestLevel(bar.low, dctx, wctx).filter(function(a){ return cut20(a[0]); });
+    if(!nearest.length){ out.innerHTML='<span class="fail">Could not compute MA levels for '+sym+'.</span>'; return; }
+    const lvl = nearest[0], second = nearest[1];
+    const pierce = (lvl[1]-bar.low)/dctx.atr;
+    const cand = {
+      trigLoose: trigLoose, pierce: pierce, sbar: 6, d3: dctx.d3, dst: 5, // sbar/dst are neutral defaults, same as the auto-scanner
+      rsi2: dctx.rsi2, dv60: dctx.dv60, _dr: 1, _offHi: null, _wLo: closeLoc, _cLoc: closeLoc, slope50: dctx.slope50,
+    };
+    const res = ScoreLib.admit(cand);
+    const ambigNote = (second && second[2]<=0.15) ? (' <span class="sub" style="display:inline">(also close to '+second[0]+', d'+second[2].toFixed(2)+' ATR — ambiguous)</span>') : '';
+    out.innerHTML =
+      '<b>'+sym+'</b> @ '+ptKey(bar.time)+' '+ptHM(bar.time)+' PT — bar O:'+bar.open.toFixed(2)+' H:'+bar.high.toFixed(2)+' L:'+bar.low.toFixed(2)+' C:'+bar.close.toFixed(2)+'<br>'+
+      'Nearest level: <b>'+lvl[0]+'</b> = '+lvl[1].toFixed(2)+' (d'+lvl[2].toFixed(3)+' ATR)'+ambigNote+' &nbsp; trigLoose='+trigLoose.toFixed(3)+' &nbsp; slope50='+(dctx.slope50!=null?dctx.slope50+'%':'-')+
+      '<div class="'+(res.pass?'pass':'fail')+'" style="margin-top:8px;">'+(res.pass?'PASS':'REJECTED')+'</div>'+
+      '<ul>'+res.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul>'+
+      '<div class="sub">Note: sbar (time-of-day-in-session) and dst (days since last tag) use neutral placeholder values live — same limitation as the auto-scanner.</div>';
+  }catch(e){
+    out.innerHTML = '<span class="fail">Fetch failed: '+e.message+'. Yahoo may be rate-limiting or blocking cross-origin requests from this browser — try again in a moment.</span>';
+  }
 }
 </script>
 </body>
