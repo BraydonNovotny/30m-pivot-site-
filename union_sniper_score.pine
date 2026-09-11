@@ -1,0 +1,188 @@
+//@version=5
+indicator("Union Sniper Score (v4 champion + slope>=0)", overlay=true, max_labels_count=500)
+
+// =====================================================================================
+// Port of the locked "nV4-only CHAMPION + slope>=0" gate from bs_dU.js / score.js.
+// Run this on the 30m (or 15m, first 90min) chart of any long candidate.
+// Known live-data limitations (same as the site's live scanner):
+//   - dst (days since last tag of the level) and _dr (consecutive descending 30m ranges)
+//     are NOT computable cleanly from a single chart -> use NEUTRAL (0-contribution)
+//     placeholders, same as scripts/scan.js. This makes the score slightly conservative,
+//     never inflated.
+//   - _offHi (ATR below running session high) also neutral/off.
+// Everything else (levels, ATR, RSI2, d3, slope50, trigLoose, pierce, $vol) is REAL data.
+// =====================================================================================
+
+// ---- DAILY CONTEXT (single security call; [1] = last COMPLETED daily bar, i.e. "prior close") ----
+[d_e8, d_e50, d_e100, d_e150, d_e200, d_s8, d_s50, d_s100, d_s150, d_s200,
+ d_atr, d_rsi2, d_dv60, d_closePrior, d_close3ago, d_ema50_5ago] = request.security(syminfo.tickerid, "D",
+     [ta.ema(close,8)[1], ta.ema(close,50)[1], ta.ema(close,100)[1], ta.ema(close,150)[1], ta.ema(close,200)[1],
+      ta.sma(close,8)[1], ta.sma(close,50)[1], ta.sma(close,100)[1], ta.sma(close,150)[1], ta.sma(close,200)[1],
+      ta.atr(14)[1], ta.rsi(close,2)[1], ta.sma(volume*close,60)[1], close[1], close[4], ta.ema(close,50)[6]],
+     lookahead=barmerge.lookahead_off)
+
+// ---- WEEKLY CONTEXT (single security call; [1] = last COMPLETED week) ----
+[w_e8, w_e10, w_e21, w_e30, w_e40, w_e50, w_e100, w_e150, w_e200,
+ w_s8, w_s10, w_s40, w_s50, w_s100, w_s150, w_s200] = request.security(syminfo.tickerid, "W",
+     [ta.ema(close,8)[1], ta.ema(close,10)[1], ta.ema(close,21)[1], ta.ema(close,30)[1], ta.ema(close,40)[1], ta.ema(close,50)[1], ta.ema(close,100)[1], ta.ema(close,150)[1], ta.ema(close,200)[1],
+      ta.sma(close,8)[1], ta.sma(close,10)[1], ta.sma(close,40)[1], ta.sma(close,50)[1], ta.sma(close,100)[1], ta.sma(close,150)[1], ta.sma(close,200)[1]],
+     lookahead=barmerge.lookahead_off)
+
+// ---- derived daily context ----
+slope50 = d_e50 != 0 ? (d_e50 - d_ema50_5ago) / d_e50 * 100 : na
+regimeUp = d_e50 > d_e200
+d3 = d_atr != 0 ? (d_closePrior - d_close3ago) / d_atr : na
+
+// ---- session-bar-of-day counter (proxy for "sbar" -- time of day) ----
+var int sbar = 0
+newDay = dayofmonth != dayofmonth[1] or month != month[1] or year != year[1]
+sbar := newDay ? 0 : sbar[1] + 1
+
+// ---- nearest MA level to this bar's low (cut20: 20-period family excluded, matches the locked system) ----
+var string[] lvlNames = array.new_string(0)
+if barstate.isfirst
+    array.push(lvlNames, "e8")
+    array.push(lvlNames, "e50")
+    array.push(lvlNames, "e100")
+    array.push(lvlNames, "e150")
+    array.push(lvlNames, "e200")
+    array.push(lvlNames, "s8")
+    array.push(lvlNames, "s50")
+    array.push(lvlNames, "s100")
+    array.push(lvlNames, "s150")
+    array.push(lvlNames, "s200")
+    array.push(lvlNames, "we8")
+    array.push(lvlNames, "we10")
+    array.push(lvlNames, "we21")
+    array.push(lvlNames, "we30")
+    array.push(lvlNames, "we40")
+    array.push(lvlNames, "we50")
+    array.push(lvlNames, "we100")
+    array.push(lvlNames, "we150")
+    array.push(lvlNames, "we200")
+    array.push(lvlNames, "ws8")
+    array.push(lvlNames, "ws10")
+    array.push(lvlNames, "ws40")
+    array.push(lvlNames, "ws50")
+    array.push(lvlNames, "ws100")
+    array.push(lvlNames, "ws150")
+    array.push(lvlNames, "ws200")
+
+lvlVals = array.new_float(0)
+array.push(lvlVals, d_e8)
+array.push(lvlVals, d_e50)
+array.push(lvlVals, d_e100)
+array.push(lvlVals, d_e150)
+array.push(lvlVals, d_e200)
+array.push(lvlVals, d_s8)
+array.push(lvlVals, d_s50)
+array.push(lvlVals, d_s100)
+array.push(lvlVals, d_s150)
+array.push(lvlVals, d_s200)
+array.push(lvlVals, w_e8)
+array.push(lvlVals, w_e10)
+array.push(lvlVals, w_e21)
+array.push(lvlVals, w_e30)
+array.push(lvlVals, w_e40)
+array.push(lvlVals, w_e50)
+array.push(lvlVals, w_e100)
+array.push(lvlVals, w_e150)
+array.push(lvlVals, w_e200)
+array.push(lvlVals, w_s8)
+array.push(lvlVals, w_s10)
+array.push(lvlVals, w_s40)
+array.push(lvlVals, w_s50)
+array.push(lvlVals, w_s100)
+array.push(lvlVals, w_s150)
+array.push(lvlVals, w_s200)
+
+float bestDist = na
+float secondDist = na
+string bestName = na
+string secondName = na
+float bestVal = na
+if d_atr > 0
+    for i = 0 to array.size(lvlVals) - 1
+        v = array.get(lvlVals, i)
+        if not na(v)
+            dist = math.abs(low - v) / d_atr
+            if na(bestDist) or dist < bestDist
+                secondDist := bestDist
+                secondName := bestName
+                bestDist := dist
+                bestName := array.get(lvlNames, i)
+                bestVal := v
+            else if na(secondDist) or dist < secondDist
+                secondDist := dist
+                secondName := array.get(lvlNames, i)
+
+// ---- per-bar candidate metrics ----
+rng = high - low
+trigLoose = d_atr > 0 ? rng / d_atr : na
+closeLoc = rng > 0 ? (close - low) / rng : 0.5
+pierce = (not na(bestVal) and d_atr > 0) ? (bestVal - low) / d_atr : na
+
+// NEUTRAL placeholders (not reliably computable live -- see header note)
+dst = 5.0
+drTerm = 1.0
+offHiVal = float(na)
+
+// ---- nV4 (display/sizing scale, 9 terms, clip -5..10) ----
+t_tight = trigLoose <= 0.10 ? 2 : trigLoose <= 0.15 ? 1 : trigLoose <= 0.20 ? 0 : trigLoose <= 0.25 ? -1 : -2
+t_pierce = pierce < -0.10 ? 1 : pierce <= 0.15 ? 0 : -1
+t_tod = sbar <= 3 ? -1 : sbar <= 6 ? 0 : sbar <= 13 ? 1 : 0
+t_d3 = d3 < -3 ? 0 : d3 < -1 ? 2 : d3 < 0 ? 1 : d3 <= 1.5 ? 0 : -1
+t_dst = dst <= 3 ? -1 : dst < 8 ? 0 : dst <= 25 ? 2 : dst <= 45 ? 1 : 0
+t_rsi2 = d_rsi2 > 85 ? -1 : d_rsi2 > 60 ? 0 : d_rsi2 > 40 ? 1 : d_rsi2 >= 15 ? 2 : d_rsi2 >= 5 ? 1 : 0
+t_vol = d_dv60 < 500000000 ? 1 : d_dv60 < 2000000000 ? 0 : -1
+t_dr = drTerm == 0 ? -1 : drTerm == 1 ? 0 : drTerm <= 3 ? 1 : 0
+t_offHi = (not na(offHiVal) and offHiVal >= 0.25 and offHiVal < 0.7) ? 1 : 0
+t_shake = closeLoc >= 0.5 ? 1 : 0   // _wLo/_cLoc both proxied by closeLoc, same as scan.js
+
+nv4raw = t_tight + t_pierce + t_tod + t_d3 + t_dst + t_rsi2 + t_vol + t_dr + t_offHi
+nv4 = math.max(-5, math.min(10, nv4raw))
+
+// ---- champion weighted score (10 signals incl shakeout) ----
+w0 = 1.5
+w1 = 0.5
+w2 = 1.75
+w3 = 0.5
+w4 = 1.75
+w5 = 0.5
+w6 = 0.25
+w7 = 0.75
+w8 = 1.75
+w9 = 0.25
+champSc = t_tight*w0 + t_pierce*w1 + t_tod*w2 + t_d3*w3 + t_dst*w4 + t_rsi2*w5 + t_vol*w6 + t_dr*w7 + t_offHi*w8 + t_shake*w9
+
+// ---- gate (A/B/Bs/Cw/Cs paths) + LOCKED slope>=0 requirement ----
+gA = 1.0
+gB = 6.0
+gTa = 0.15
+gTb = 0.20
+gBs = 10.0
+gBcap = 0.18
+gCw = 0.5
+gCs = 4.0
+gCcap = 0.25
+pathA = trigLoose <= gTa and champSc >= gA
+pathAloose = trigLoose > gTa and trigLoose <= gTb and champSc >= gB
+pathB = champSc >= gBs and trigLoose <= gBcap
+pathC = closeLoc >= gCw and closeLoc >= 0.5 and champSc >= gCs and trigLoose <= gCcap
+slopeOk = not na(slope50) and slope50 >= 0
+gatePass = (pathA or pathAloose or pathB or pathC) and slopeOk and regimeUp
+
+// ---- plot ----
+plotshape(gatePass, title="PASS", location=location.belowbar, style=shape.triangleup, size=size.small, color=color.new(color.lime, 0))
+
+if barstate.islast or gatePass
+    lblColor = gatePass ? color.new(color.green, 70) : color.new(color.red, 85)
+    ambigTxt = (not na(secondDist) and secondDist <= 0.15) ? (" (ambig~" + secondName + ")") : ""
+    txt = (gatePass ? "PASS" : "reject") + "\nnV4=" + str.tostring(nv4) + "  sc=" + str.tostring(champSc, "#.##") +
+       "\nlvl=" + (na(bestName) ? "-" : bestName) + " d" + str.tostring(bestDist, "#.###") + ambigTxt +
+       "\ntrig=" + str.tostring(trigLoose, "#.###") + "  slope50=" + str.tostring(slope50, "#.##") + "%" +
+       "\nregime50>200=" + (regimeUp ? "Y" : "N")
+    label.new(bar_index, low, txt, style=label.style_label_up, color=lblColor, textcolor=color.white, size=size.small)
+
+// background tint when the CURRENT (last) bar passes -- quick visual scan
+bgcolor(gatePass and barstate.islast ? color.new(color.green, 85) : na)
