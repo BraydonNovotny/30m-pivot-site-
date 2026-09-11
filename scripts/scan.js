@@ -78,8 +78,15 @@ async function scanOne(sym) {
 
     // last completed 30m bar (skip the still-forming one if market is open — use second-to-last as "last closed")
     const bars = intraday.slice(-8); // recent bars to scan for a candidate trigger
+    // mark which bars are the LAST bar of their (Pacific) trading day -- never buy the close, no fill/follow-through room
+    const ptDay = function (t) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date(t * 1000)); };
+    const isLastOfDay = bars.map(function (b, k) { return k === bars.length - 1 || ptDay(bars[k + 1].time) !== ptDay(b.time); });
+    // pay-up slippage: real fills don't happen exactly at the bar low, and higher-priced names need more
+    // room to actually get filled -- roughly 4bps of price, e.g. ~$0.10 on a $250 stock.
+    const slip = function (price) { return Math.max(0.01, +(price * 0.0004).toFixed(2)); };
     let best = null;
     for (let k = bars.length - 2; k >= 1; k--) { // skip the very last (likely forming) bar
+      if (isLastOfDay[k]) continue; // don't buy the last bar of the day
       const b = bars[k];
       const rng = b.high - b.low;
       const trigLoose = rng / dctx.atr;
@@ -100,9 +107,10 @@ async function scanOne(sym) {
       if (!best || res.score > best.res.score) best = { bar: b, lvl: lvl, res: res, cand: cand };
     }
     if (!best) return null;
+    const payUp = slip(best.bar.low);
     return {
       sym: sym, time: best.bar.time, level: best.lvl[0], levelVal: +best.lvl[1].toFixed(2),
-      levelDistATR: +best.lvl[2].toFixed(3), entry: +best.bar.low.toFixed(2),
+      levelDistATR: +best.lvl[2].toFixed(3), entry: +(best.bar.low + payUp).toFixed(2), rawLow: +best.bar.low.toFixed(2), payUp: payUp,
       trigLoose: +best.cand.trigLoose.toFixed(3), score: +best.res.score.toFixed(2), nv4: best.res.nv4,
       pass: best.res.pass, reasons: best.res.reasons,
     };

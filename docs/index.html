@@ -40,7 +40,7 @@
     <span class="sub" style="margin:0;">All times below are Pacific (PT)</span>
   </div>
   <table id="resultsTable">
-    <thead><tr><th>Sym</th><th>Time (PT)</th><th>Level</th><th>Entry</th><th>Trig</th><th>Score</th><th>nV4</th><th>Status</th></tr></thead>
+    <thead><tr><th>Sym</th><th>Time (PT)</th><th>Level</th><th>Entry (paid up)</th><th>Trig</th><th>Score</th><th>nV4</th><th>Status</th></tr></thead>
     <tbody></tbody>
   </table>
 </div>
@@ -92,7 +92,7 @@ function renderScan(j){
     const tr=document.createElement('tr');
     tr.className = r.pass ? 'pass' : 'fail';
     tr.innerHTML = '<td>'+r.sym+'</td><td>'+fmtPT(r.time)+'</td>'+
-      '<td>'+r.level+' (d'+r.levelDistATR+')</td><td>'+r.entry+'</td><td>'+r.trigLoose+'</td>'+
+      '<td>'+r.level+' (d'+r.levelDistATR+')</td><td>'+r.entry+' <span class="sub" style="display:inline">(+'+(r.payUp!=null?r.payUp:0)+' vs '+(r.rawLow!=null?r.rawLow:r.entry)+' low)</span></td><td>'+r.trigLoose+'</td>'+
       '<td>'+r.score+'</td><td>'+r.nv4+'</td>'+
       '<td><span class="badge '+(r.pass?'pass':'fail')+'">'+(r.pass?'PASS':'no')+'</span></td>';
     tb.appendChild(tr);
