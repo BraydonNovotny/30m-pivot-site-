@@ -1,0 +1,85 @@
+{
+ "generatedAt": "2026-09-11T02:22:50.001Z",
+ "universe": 5,
+ "scanned": 4,
+ "results": [
+  {
+   "sym": "NVDA",
+   "time": 1789066800,
+   "level": "we8",
+   "levelVal": 217.58,
+   "levelDistATR": 0.014,
+   "entry": 217.69,
+   "trigLoose": 0.09,
+   "score": 8.25,
+   "nv4": 6,
+   "pass": true,
+   "reasons": [
+    "champion weighted score = 8.25 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 6",
+    "trigLoose (bar range / daily ATR) = 0.090",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 8.25 < 10",
+    "PASS via Path C (shakeout): wick>=0.5, closeLoc>=0.5, score>=4, trig<=0.25"
+   ]
+  },
+  {
+   "sym": "MU",
+   "time": 1789066800,
+   "level": "s8",
+   "levelVal": 978.56,
+   "levelDistATR": 0.012,
+   "entry": 978.03,
+   "trigLoose": 0.134,
+   "score": 7.25,
+   "nv4": 6,
+   "pass": true,
+   "reasons": [
+    "champion weighted score = 7.25 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 6",
+    "trigLoose (bar range / daily ATR) = 0.134",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 7.25 < 10",
+    "PASS via Path C (shakeout): wick>=0.5, closeLoc>=0.5, score>=4, trig<=0.25"
+   ]
+  },
+  {
+   "sym": "AMD",
+   "time": 1789066800,
+   "level": "s50",
+   "levelVal": 497.04,
+   "levelDistATR": 0.341,
+   "entry": 503.43,
+   "trigLoose": 0.147,
+   "score": 6.75,
+   "nv4": 5,
+   "pass": true,
+   "reasons": [
+    "champion weighted score = 6.75 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 5",
+    "trigLoose (bar range / daily ATR) = 0.147",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 6.75 < 10",
+    "PASS via Path C (shakeout): wick>=0.5, closeLoc>=0.5, score>=4, trig<=0.25"
+   ]
+  },
+  {
+   "sym": "AAPL",
+   "time": 1789068600,
+   "level": "s8",
+   "levelVal": 321.66,
+   "levelDistATR": 0.467,
+   "entry": 325.17,
+   "trigLoose": 0.201,
+   "score": 2.75,
+   "nv4": 1,
+   "pass": false,
+   "reasons": [
+    "champion weighted score = 2.75 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 1",
+    "trigLoose (bar range / daily ATR) = 0.201",
+    "NO PATH QUALIFIES — rejected"
+   ]
+  }
+ ]
+}

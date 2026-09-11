@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Union Sniper Live Screener</title>
+<style>
+  body { font-family: -apple-system,Segoe UI,Arial,sans-serif; background:#0b0d11; color:#e6e8eb; margin:0; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#8b93a1; font-size:12px; margin-bottom:20px; }
+  table { border-collapse:collapse; width:100%; margin-bottom:32px; font-size:13px; }
+  th,td { padding:6px 10px; text-align:left; border-bottom:1px solid #1e2229; }
+  th { color:#8b93a1; font-weight:600; text-transform:uppercase; font-size:11px; }
+  tr.pass { background:#0f2e1a; }
+  tr.pass td:first-child { border-left:3px solid #2ecc71; }
+  tr.fail td:first-child { border-left:3px solid #333; }
+  .badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge.pass { background:#1e5631; color:#7CFFA0; }
+  .badge.fail { background:#3a2020; color:#ff8a8a; }
+  .card { background:#12151a; border:1px solid #1e2229; border-radius:10px; padding:20px; margin-bottom:24px; }
+  label { display:block; font-size:12px; color:#8b93a1; margin:10px 0 4px; }
+  input { background:#0b0d11; border:1px solid #2a2f38; color:#e6e8eb; padding:6px 8px; border-radius:6px; width:140px; font-size:13px; }
+  button { background:#2ecc71; color:#04150a; border:none; padding:8px 18px; border-radius:6px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:hover { opacity:0.9; }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:700px; }
+  #manualResult { margin-top:16px; font-size:13px; line-height:1.6; }
+  #manualResult .pass { color:#7CFFA0; font-weight:700; }
+  #manualResult .fail { color:#ff8a8a; font-weight:700; }
+  #manualResult ul { margin:6px 0; padding-left:18px; color:#c3c8d1; }
+  a { color:#5fb2ff; }
+</style>
+</head>
+<body>
+<h1>Union Sniper — Live Pullback Screener</h1>
+<div class="sub" id="genAt">loading scan…</div>
+
+<div class="card">
+  <table id="resultsTable">
+    <thead><tr><th>Sym</th><th>Time (UTC)</th><th>Level</th><th>Entry</th><th>Trig</th><th>Score</th><th>nV4</th><th>Status</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="font-size:16px;margin:0 0 4px;">Manual bar check</h2>
+  <div class="sub" style="margin-bottom:6px;">Type in a trigger bar you're eyeballing on a chart — scored with the exact same champion gate as the backtest.</div>
+  <div class="grid">
+    <div><label>Trigger bar high</label><input id="m_high" type="number" step="any"></div>
+    <div><label>Trigger bar low</label><input id="m_low" type="number" step="any"></div>
+    <div><label>Trigger bar close</label><input id="m_close" type="number" step="any"></div>
+    <div><label>Trigger bar open</label><input id="m_open" type="number" step="any"></div>
+    <div><label>Nearest MA level value</label><input id="m_lvl" type="number" step="any"></div>
+    <div><label>Daily ATR (14)</label><input id="m_atr" type="number" step="any"></div>
+    <div><label>Session bar # (0=open)</label><input id="m_sbar" type="number" step="1" value="6"></div>
+    <div><label>3-day chg / ATR (d3)</label><input id="m_d3" type="number" step="any" value="0"></div>
+    <div><label>Days since last tag (dst)</label><input id="m_dst" type="number" step="1" value="10"></div>
+    <div><label>2-day RSI</label><input id="m_rsi2" type="number" step="any" value="30"></div>
+    <div><label>60d avg $vol (millions)</label><input id="m_dv" type="number" step="any" value="300"></div>
+  </div>
+  <button onclick="runManual()">Score this bar</button>
+  <div id="manualResult"></div>
+</div>
+
+<script src="score.js"></script>
+<script>
+async function loadScan(){
+  try{
+    const r = await fetch('data.json?_='+Date.now());
+    const j = await r.json();
+    document.getElementById('genAt').textContent =
+      'Scan generated ' + new Date(j.generatedAt).toLocaleString() + ' — ' + j.scanned + '/' + j.universe + ' symbols with a live candidate bar';
+    const tb = document.querySelector('#resultsTable tbody');
+    tb.innerHTML='';
+    j.results.forEach(function(r){
+      const tr=document.createElement('tr');
+      tr.className = r.pass ? 'pass' : 'fail';
+      tr.innerHTML = '<td>'+r.sym+'</td><td>'+new Date(r.time*1000).toISOString().slice(11,16)+'</td>'+
+        '<td>'+r.level+' (d'+r.levelDistATR+')</td><td>'+r.entry+'</td><td>'+r.trigLoose+'</td>'+
+        '<td>'+r.score+'</td><td>'+r.nv4+'</td>'+
+        '<td><span class="badge '+(r.pass?'pass':'fail')+'">'+(r.pass?'PASS':'no')+'</span></td>';
+      tb.appendChild(tr);
+    });
+  }catch(e){
+    document.getElementById('genAt').textContent = 'No scan data yet — the GitHub Actions cron job writes data.json on its schedule.';
+  }
+}
+loadScan();
+
+function runManual(){
+  const g = id => parseFloat(document.getElementById(id).value);
+  const high=g('m_high'), low=g('m_low'), close=g('m_close'), open=g('m_open');
+  const lvl=g('m_lvl'), atr=g('m_atr'), sbar=g('m_sbar'), d3=g('m_d3'), dst=g('m_dst'), rsi2=g('m_rsi2'), dvM=g('m_dv');
+  if([high,low,close,open,lvl,atr].some(isNaN)){
+    document.getElementById('manualResult').innerHTML='<span class="fail">Fill in high/low/close/open/level/ATR first.</span>';
+    return;
+  }
+  const rng = high-low;
+  const trigLoose = rng/atr;
+  const closeLoc = rng>0 ? (close-low)/rng : 0.5;
+  const pierce = (lvl-low)/atr;
+  const cand = { trigLoose, pierce, sbar, d3, dst, rsi2, dv60: dvM*1e6, _dr:2, _offHi:null, _wLo:closeLoc, _cLoc:closeLoc };
+  const res = ScoreLib.admit(cand);
+  const html = '<div class="'+(res.pass?'pass':'fail')+'">'+(res.pass?'PASS':'REJECTED')+'</div>'+
+    '<ul>'+res.reasons.map(r=>'<li>'+r+'</li>').join('')+'</ul>';
+  document.getElementById('manualResult').innerHTML = html;
+}
+</script>
+</body>
+</html>
