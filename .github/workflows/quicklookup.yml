@@ -1,0 +1,38 @@
+name: quicklookup
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: 'Ticker symbol'
+        required: true
+      date:
+        description: 'Date YYYY-MM-DD (blank = most recent closed bar)'
+        required: false
+      time:
+        description: 'Time PT, e.g. 10:30 (blank = most recent closed bar)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: run lookup
+        env:
+          LOOKUP_SYM: ${{ github.event.inputs.ticker }}
+          LOOKUP_DATE: ${{ github.event.inputs.date }}
+          LOOKUP_TIME: ${{ github.event.inputs.time }}
+        run: node scripts/quicklookup.js
+      - name: commit result
+        run: |
+          git config user.name "quicklookup-bot"
+          git config user.email "quicklookup-bot@users.noreply.github.com"
+          git add docs/quicklookup.json
+          git diff --quiet --cached || git commit -m "quicklookup: ${{ github.event.inputs.ticker }} ${{ github.event.inputs.date }} ${{ github.event.inputs.time }}"
+          git push

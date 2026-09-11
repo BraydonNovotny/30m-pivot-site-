@@ -47,7 +47,7 @@
 
 <div class="card">
   <h2 style="font-size:16px;margin:0 0 4px;">Quick ticker check</h2>
-  <div class="sub" style="margin-bottom:6px;">Type a ticker + the trigger bar's time (Pacific) — pulls live 30m bars from Yahoo Finance and scores it automatically. No need to type OHLC by hand.</div>
+  <div class="sub" style="margin-bottom:6px;">Type a ticker + the trigger bar's time (Pacific). Tries a direct browser fetch first; if your browser blocks that (ad-blockers/extensions often block finance-API domains), falls back to a server-side GitHub Actions lookup — 100% reliable, just takes ~30-60s.</div>
   <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
     <div><label>Ticker</label><input id="q_sym" type="text" placeholder="AAPL" style="text-transform:uppercase;"></div>
     <div><label>Date (blank = most recent day)</label><input id="q_date" type="text" placeholder="2026-09-10"></div>
@@ -55,6 +55,16 @@
     <button onclick="runQuick()">Fetch & score</button>
   </div>
   <div id="quickResult" style="margin-top:16px;font-size:13px;line-height:1.6;"></div>
+  <div id="quickFallback" hidden style="margin-top:14px;padding:14px;background:#0b0d11;border:1px solid #2a2f38;border-radius:8px;">
+    <b>Browser fetch blocked.</b> Reliable path (server-side, no CORS issues):
+    <ol style="margin:8px 0;padding-left:20px;color:#c3c8d1;">
+      <li>Open <a href="https://github.com/BraydonNovotny/30m-pivot-site-/actions/workflows/quicklookup.yml" target="_blank">the quicklookup Action</a></li>
+      <li>Click <b>"Run workflow"</b>, type the ticker (+ date/time if you want a specific bar), click the green Run button</li>
+      <li>Wait ~30-60s for it to finish, then come back here and click <b>"Check for result"</b> below</li>
+    </ol>
+    <button onclick="checkQuickResult()">Check for result</button>
+    <div id="quickFallbackResult" style="margin-top:10px;"></div>
+  </div>
 </div>
 
 <div class="card">
@@ -275,7 +285,36 @@ async function runQuick(){
       '<ul>'+res.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul>'+
       '<div class="sub">Note: sbar (time-of-day-in-session) and dst (days since last tag) use neutral placeholder values live — same limitation as the auto-scanner.</div>';
   }catch(e){
-    out.innerHTML = '<span class="fail">Fetch failed: '+e.message+'</span><br><span class="sub">All data sources (direct + 3 proxies) failed — likely temporary rate-limiting. Wait ~30s and retry, or use the Manual bar check below (always works, no network dependency).</span>';
+    out.innerHTML = '<span class="fail">Browser fetch failed: '+e.message+'</span>';
+    document.getElementById('quickFallback').hidden = false;
+  }
+}
+
+async function checkQuickResult(){
+  const sym = document.getElementById('q_sym').value.trim().toUpperCase();
+  const el = document.getElementById('quickFallbackResult');
+  el.innerHTML = 'Checking…';
+  try{
+    const r = await fetch('quicklookup.json?_='+Date.now());
+    if(!r.ok) throw new Error('no result file yet');
+    const j = await r.json();
+    if(sym && j.sym && j.sym!==sym){
+      el.innerHTML = '<span class="sub">Latest result is for '+j.sym+', not '+sym+' — run the workflow for '+sym+' if you haven\'t yet, or wait for it to finish.</span>';
+      return;
+    }
+    if(!j.ok){
+      el.innerHTML = '<span class="fail">Lookup failed: '+j.error+'</span>';
+      return;
+    }
+    const ambigNote = j.ambiguousWith ? (' <span class="sub" style="display:inline">(also close to '+j.ambiguousWith.key+', d'+j.ambiguousWith.distATR+' ATR — ambiguous)</span>') : '';
+    el.innerHTML =
+      '<b>'+j.sym+'</b> @ '+j.barDate+' '+j.barTime+' PT — bar O:'+j.open.toFixed(2)+' H:'+j.high.toFixed(2)+' L:'+j.low.toFixed(2)+' C:'+j.close.toFixed(2)+'<br>'+
+      'Nearest level: <b>'+j.level+'</b> = '+j.levelVal+' (d'+j.levelDistATR+' ATR)'+ambigNote+' &nbsp; trigLoose='+j.trigLoose+' &nbsp; slope50='+(j.slope50!=null?j.slope50+'%':'-')+
+      '<div class="'+(j.pass?'pass':'fail')+'" style="margin-top:8px;">'+(j.pass?'PASS':'REJECTED')+'</div>'+
+      '<ul>'+j.reasons.map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul>'+
+      '<div class="sub">Generated '+new Date(j.generatedAt).toLocaleString()+'</div>';
+  }catch(e){
+    el.innerHTML = '<span class="sub">No result yet — run the workflow first (takes ~30-60s), then check again.</span>';
   }
 }
 </script>
