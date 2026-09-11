@@ -84,29 +84,41 @@ async function scanOne(sym) {
     // pay-up slippage: real fills don't happen exactly at the bar low, and higher-priced names need more
     // room to actually get filled -- roughly 4bps of price, e.g. ~$0.10 on a $250 stock.
     const slip = function (price) { return Math.max(0.01, +(price * 0.0004).toFixed(2)); };
+    // cut20: the real system drops 20-period MAs entirely (e20/s20/we20/ws20) -- match that live.
+    const cut20 = function (key) { return !/(^|[^0-9])20$/.test(key || ''); };
     let best = null;
-    for (let k = bars.length - 2; k >= 1; k--) { // skip the very last (likely forming) bar
+    for (let k = bars.length - 2; k >= 2; k--) { // skip the very last (forming) bar; need k-1 for the pullback check below
       if (isLastOfDay[k]) continue; // don't buy the last bar of the day
       const b = bars[k];
       const rng = b.high - b.low;
       const trigLoose = rng / dctx.atr;
-      if (trigLoose > 0.30) continue; // too loose to ever pass any gate
+      if (trigLoose > 0.25) continue; // matches the champion's loosest path cap (Ccap=0.25) -- nothing looser ever passes
       const closeLoc = rng > 0 ? (b.close - b.low) / rng : 0.5;
       if (closeLoc < 0.35) continue; // want a green-ish / solid close, not a big red bar
-      const nearest = S.nearestLevel(b.low, dctx, wctx);
+      // require an actual pullback into the trigger: the prior bar must NOT have made a higher high
+      // than the bar before it (a minimal stand-in for the engine's _dr consecutive-lower-highs check).
+      // without this, ANY quiet bar near an MA qualifies, which is what was flooding the site.
+      const prev = bars[k - 1], prev2 = bars[k - 2];
+      const hadPullback = prev.high <= prev2.high + 1e-9;
+      if (!hadPullback) continue;
+      const nearest = S.nearestLevel(b.low, dctx, wctx).filter(function (a) { return cut20(a[0]); });
       if (!nearest.length) continue;
       const lvl = nearest[0];
-      if (lvl[2] > 0.6) continue; // not actually near any MA
+      if (lvl[2] > 0.3) continue; // genuinely near an MA (was 0.6 -- too loose, matched almost anything)
       const pierce = (lvl[1] - b.low) / dctx.atr; // + = pierced below the level
       const sbar = k; // rough session-bar-index proxy within the recent window
       const cand = {
-        trigLoose: trigLoose, pierce: pierce, sbar: sbar, d3: dctx.d3, dst: 10, // dst unknown live -> neutral default
-        rsi2: dctx.rsi2, dv60: dctx.dv60, _dr: 2, _offHi: null, _wLo: closeLoc, _cLoc: closeLoc, slope50: dctx.slope50,
+        // dst/_dr/_offHi are NOT reliably computable live without full history -- use NEUTRAL (0-contribution)
+        // defaults, not favorable ones. Previous version used dst:10 (+2) and _dr:2 (+1), which silently
+        // inflated every candidate's score and is why the site was showing far more "passes" than the real
+        // ~6-7/wk system does.
+        trigLoose: trigLoose, pierce: pierce, sbar: sbar, d3: dctx.d3, dst: 5, // dst 4-7 -> neutral 0
+        rsi2: dctx.rsi2, dv60: dctx.dv60, _dr: 1, _offHi: null, _wLo: closeLoc, _cLoc: closeLoc, slope50: dctx.slope50, // _dr==1 -> neutral 0
       };
       const res = S.admit(cand);
       if (!best || res.score > best.res.score) best = { bar: b, lvl: lvl, res: res, cand: cand };
     }
-    if (!best) return null;
+    if (!best || !best.res.pass) return null; // don't surface rejects at all -- only real (or pending-confirm) signals
     const bestIdx = bars.indexOf(best.bar);
     // CONFIRM: a pullback bar is only a real signal once a LATER bar actually breaks above the
     // trigger bar's high (that's the real fill condition in the engine) -- otherwise it's just a
