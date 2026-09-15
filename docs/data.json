@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-15T20:19:27.101Z",
+ "generatedAt": "2026-09-15T22:59:39.126Z",
  "universe": 405,
  "scanned": 40,
  "results": [
@@ -621,7 +621,7 @@
    "entry": 69.14,
    "rawLow": 69.11,
    "payUp": 0.03,
-   "trigLoose": 0.092,
+   "trigLoose": 0.093,
    "score": 2,
    "nv4": 2,
    "slope50": 0.57,
@@ -631,7 +631,7 @@
    "reasons": [
     "champion weighted score = 2.00 (raw signal sum, not nV4)",
     "nV4 (0-9 grading scale) = 2",
-    "trigLoose (bar range / daily ATR) = 0.092",
+    "trigLoose (bar range / daily ATR) = 0.093",
     "PASS via base path: trig<=0.15 & score>=1",
     "Path B failed: score 2.00 < 10",
     "CONFIRMED: broke above trigger high 69.11 at 2026-09-15T18:00:00.000Z"
@@ -942,7 +942,7 @@
    "time": 1789493400,
    "level": "e50",
    "levelVal": 758.51,
-   "levelDistATR": 0.29,
+   "levelDistATR": 0.289,
    "entry": 757.7,
    "rawLow": 757.4,
    "payUp": 0.3,
