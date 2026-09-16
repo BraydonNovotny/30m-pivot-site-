@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-16T20:17:12.740Z",
+ "generatedAt": "2026-09-16T23:04:32.762Z",
  "universe": 405,
- "scanned": 24,
+ "scanned": 23,
  "results": [
   {
    "sym": "HAL",
@@ -83,7 +83,7 @@
    "time": 1789579800,
    "level": "s8",
    "levelVal": 212.56,
-   "levelDistATR": 0.034,
+   "levelDistATR": 0.033,
    "entry": 213.22,
    "rawLow": 213.13,
    "payUp": 0.09,
@@ -133,14 +133,14 @@
    "time": 1789579800,
    "level": "s8",
    "levelVal": 56.53,
-   "levelDistATR": 0.174,
+   "levelDistATR": 0.175,
    "entry": 57.46,
    "rawLow": 57.44,
    "payUp": 0.02,
    "trigLoose": 0.061,
    "score": 2.5,
    "nv4": 3,
-   "slope50": 2.21,
+   "slope50": 2.2,
    "pass": true,
    "confirmed": true,
    "triggerHigh": 57.44,
@@ -401,31 +401,6 @@
     "PASS via base path: trig<=0.15 & score>=1",
     "Path B failed: score 1.50 < 10",
     "CONFIRMED: broke above trigger high 49.31 at 2026-09-16T18:00:00.000Z"
-   ]
-  },
-  {
-   "sym": "FCX",
-   "time": 1789578000,
-   "level": "e50",
-   "levelVal": 69.51,
-   "levelDistATR": 0.006,
-   "entry": 69.86,
-   "rawLow": 69.83,
-   "payUp": 0.03,
-   "trigLoose": 0.105,
-   "score": 1.5,
-   "nv4": 3,
-   "slope50": 0.16,
-   "pass": true,
-   "confirmed": true,
-   "triggerHigh": 69.82,
-   "reasons": [
-    "champion weighted score = 1.50 (raw signal sum, not nV4)",
-    "nV4 (0-9 grading scale) = 3",
-    "trigLoose (bar range / daily ATR) = 0.105",
-    "PASS via base path: trig<=0.15 & score>=1",
-    "Path B failed: score 1.50 < 10",
-    "CONFIRMED: broke above trigger high 69.82 at 2026-09-16T17:30:00.000Z"
    ]
   },
   {
