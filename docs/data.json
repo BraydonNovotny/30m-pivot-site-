@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-17T20:26:10.522Z",
+ "generatedAt": "2026-09-17T22:57:11.433Z",
  "universe": 405,
  "scanned": 50,
  "results": [
@@ -137,16 +137,16 @@
    "time": 1789673400,
    "level": "e8",
    "levelVal": 64.66,
-   "levelDistATR": 0.219,
-   "entry": 64.5,
-   "rawLow": 64.47,
+   "levelDistATR": 0.22,
+   "entry": 64.51,
+   "rawLow": 64.48,
    "payUp": 0.03,
    "trigLoose": 0.079,
    "score": 4.25,
    "nv4": 4,
    "slope50": 1.13,
-   "pass": false,
-   "confirmed": false,
+   "pass": true,
+   "confirmed": true,
    "triggerHigh": 64.47,
    "reasons": [
     "champion weighted score = 4.25 (raw signal sum, not nV4)",
@@ -155,7 +155,7 @@
     "PASS via base path: trig<=0.15 & score>=1",
     "Path B failed: score 4.25 < 10",
     "PASS via Path C (shakeout): wick>=0.5, closeLoc>=0.5, score>=4, trig<=0.25",
-    "WAITING: has not yet broken above trigger high 64.47 -- not a live signal until it does"
+    "CONFIRMED: broke above trigger high 64.47 at 2026-09-17T20:00:00.000Z"
    ]
   },
   {
@@ -410,31 +410,6 @@
    ]
   },
   {
-   "sym": "EPD",
-   "time": 1789671600,
-   "level": "ws8",
-   "levelVal": 38.5,
-   "levelDistATR": 0.033,
-   "entry": 38.6,
-   "rawLow": 38.58,
-   "payUp": 0.02,
-   "trigLoose": 0.124,
-   "score": 3.25,
-   "nv4": 5,
-   "slope50": 0.09,
-   "pass": false,
-   "confirmed": false,
-   "triggerHigh": 38.58,
-   "reasons": [
-    "champion weighted score = 3.25 (raw signal sum, not nV4)",
-    "nV4 (0-9 grading scale) = 5",
-    "trigLoose (bar range / daily ATR) = 0.124",
-    "PASS via base path: trig<=0.15 & score>=1",
-    "Path B failed: score 3.25 < 10",
-    "WAITING: has not yet broken above trigger high 38.58 -- not a live signal until it does"
-   ]
-  },
-  {
    "sym": "ET",
    "time": 1789669800,
    "level": "ws8",
@@ -457,6 +432,31 @@
     "PASS via base path: trig<=0.15 & score>=1",
     "Path B failed: score 3.25 < 10",
     "CONFIRMED: broke above trigger high 21.09 at 2026-09-17T19:00:00.000Z"
+   ]
+  },
+  {
+   "sym": "EPD",
+   "time": 1789671600,
+   "level": "ws8",
+   "levelVal": 38.5,
+   "levelDistATR": 0.033,
+   "entry": 38.6,
+   "rawLow": 38.58,
+   "payUp": 0.02,
+   "trigLoose": 0.124,
+   "score": 3.25,
+   "nv4": 5,
+   "slope50": 0.09,
+   "pass": false,
+   "confirmed": false,
+   "triggerHigh": 38.58,
+   "reasons": [
+    "champion weighted score = 3.25 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 5",
+    "trigLoose (bar range / daily ATR) = 0.124",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 3.25 < 10",
+    "WAITING: has not yet broken above trigger high 38.58 -- not a live signal until it does"
    ]
   },
   {
@@ -589,11 +589,11 @@
    "time": 1789673400,
    "level": "we21",
    "levelVal": 131.98,
-   "levelDistATR": 0.11,
+   "levelDistATR": 0.111,
    "entry": 132.92,
    "rawLow": 132.87,
    "payUp": 0.05,
-   "trigLoose": 0.121,
+   "trigLoose": 0.122,
    "score": 2.75,
    "nv4": 3,
    "slope50": 0.08,
@@ -603,7 +603,7 @@
    "reasons": [
     "champion weighted score = 2.75 (raw signal sum, not nV4)",
     "nV4 (0-9 grading scale) = 3",
-    "trigLoose (bar range / daily ATR) = 0.121",
+    "trigLoose (bar range / daily ATR) = 0.122",
     "PASS via base path: trig<=0.15 & score>=1",
     "Path B failed: score 2.75 < 10",
     "WAITING: has not yet broken above trigger high 132.87 -- not a live signal until it does"
