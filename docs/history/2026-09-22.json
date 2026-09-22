@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-22T20:18:19.718Z",
+ "generatedAt": "2026-09-22T23:04:16.283Z",
  "universe": 405,
  "scanned": 17,
  "results": [
@@ -59,7 +59,7 @@
    "time": 1790101800,
    "level": "we8",
    "levelVal": 159.31,
-   "levelDistATR": 0.063,
+   "levelDistATR": 0.064,
    "entry": 159.36,
    "rawLow": 159.3,
    "payUp": 0.06,
