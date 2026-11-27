@@ -1,0 +1,132 @@
+{
+ "generatedAt": "2026-11-27T21:44:10.853Z",
+ "universe": 405,
+ "scanned": 5,
+ "results": [
+  {
+   "sym": "CCL",
+   "time": 1795800600,
+   "level": "s8",
+   "levelVal": 27.97,
+   "levelDistATR": 0.01,
+   "entry": 28.16,
+   "rawLow": 28.15,
+   "payUp": 0.01,
+   "trigLoose": 0.101,
+   "score": 2.75,
+   "nv4": 3,
+   "slope50": 0.25,
+   "pass": true,
+   "confirmed": true,
+   "triggerHigh": 28.09,
+   "reasons": [
+    "champion weighted score = 2.75 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 3",
+    "trigLoose (bar range / daily ATR) = 0.101",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 2.75 < 10",
+    "CONFIRMED: broke above trigger high 28.09 at 2026-11-27T18:00:00.000Z"
+   ]
+  },
+  {
+   "sym": "RCL",
+   "time": 1795798800,
+   "level": "e8",
+   "levelVal": 313.45,
+   "levelDistATR": 0.014,
+   "entry": 315.6,
+   "rawLow": 315.47,
+   "payUp": 0.13,
+   "trigLoose": 0.148,
+   "score": 2.75,
+   "nv4": 3,
+   "slope50": 0.74,
+   "pass": true,
+   "confirmed": true,
+   "triggerHigh": 315.47,
+   "reasons": [
+    "champion weighted score = 2.75 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 3",
+    "trigLoose (bar range / daily ATR) = 0.148",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 2.75 < 10",
+    "CONFIRMED: broke above trigger high 315.47 at 2026-11-27T17:30:00.000Z"
+   ]
+  },
+  {
+   "sym": "KR",
+   "time": 1795797000,
+   "level": "e8",
+   "levelVal": 69.2,
+   "levelDistATR": 0.051,
+   "entry": 69.54,
+   "rawLow": 69.51,
+   "payUp": 0.03,
+   "trigLoose": 0.124,
+   "score": 2,
+   "nv4": 2,
+   "slope50": 1.14,
+   "pass": true,
+   "confirmed": true,
+   "triggerHigh": 69.51,
+   "reasons": [
+    "champion weighted score = 2.00 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 2",
+    "trigLoose (bar range / daily ATR) = 0.124",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 2.00 < 10",
+    "CONFIRMED: broke above trigger high 69.51 at 2026-11-27T17:00:00.000Z"
+   ]
+  },
+  {
+   "sym": "KDP",
+   "time": 1795797000,
+   "level": "e8",
+   "levelVal": 35.48,
+   "levelDistATR": 0.057,
+   "entry": 35.59,
+   "rawLow": 35.58,
+   "payUp": 0.01,
+   "trigLoose": 0.143,
+   "score": 1.75,
+   "nv4": 1,
+   "slope50": 0.68,
+   "pass": false,
+   "confirmed": false,
+   "triggerHigh": 35.58,
+   "reasons": [
+    "champion weighted score = 1.75 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 1",
+    "trigLoose (bar range / daily ATR) = 0.143",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 1.75 < 10",
+    "WAITING: has not yet broken above trigger high 35.58 -- not a live signal until it does"
+   ]
+  },
+  {
+   "sym": "XLV",
+   "time": 1795793400,
+   "level": "e8",
+   "levelVal": 183.02,
+   "levelDistATR": 0.075,
+   "entry": 183.8,
+   "rawLow": 183.73,
+   "payUp": 0.07,
+   "trigLoose": 0.134,
+   "score": 1,
+   "nv4": 2,
+   "slope50": 0.39,
+   "pass": true,
+   "confirmed": true,
+   "triggerHigh": 183.73,
+   "reasons": [
+    "champion weighted score = 1.00 (raw signal sum, not nV4)",
+    "nV4 (0-9 grading scale) = 2",
+    "trigLoose (bar range / daily ATR) = 0.134",
+    "PASS via base path: trig<=0.15 & score>=1",
+    "Path B failed: score 1.00 < 10",
+    "CONFIRMED: broke above trigger high 183.73 at 2026-11-27T16:00:00.000Z"
+   ]
+  }
+ ]
+}
